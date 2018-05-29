@@ -30,8 +30,11 @@ class RedirectMiddleware(object):
         full_path = request.get_full_path()
         current_site = get_current_site(request)
         r = None
-        key = '{0}_{1}'.format(full_path, settings.SITE_ID)
-        cached_redirect = cache.get(key)
+        try:
+            key = '{0}_{1}'.format(full_path, settings.SITE_ID)
+            cached_redirect = cache.get(key)
+        except Exception as e:
+            cached_redirect = False
         if not cached_redirect:
             try:
                 r = Redirect.objects.get(site=current_site, old_path=full_path)
