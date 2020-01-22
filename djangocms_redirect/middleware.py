@@ -1,68 +1,90 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
 
+from operator import itemgetter
+
 from django import http
 from django.apps import apps
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
+from django.db.models import Q
+from django.utils.deprecation import MiddlewareMixin
+from django.utils.http import urlunquote_plus
 
 from .models import Redirect
+from .utils import get_key_from_path_and_site
 
 
-class RedirectMiddleware(object):
+class RedirectMiddleware(MiddlewareMixin):
 
     # Defined as class-level attributes to be subclassing-friendly.
     response_gone_class = http.HttpResponseGone
     response_redirect_class = http.HttpResponseRedirect
     response_permanent_redirect_class = http.HttpResponsePermanentRedirect
 
-    def __init__(self):
+    no_site_message = 'RedirectFallbackMiddleware requires django.contrib.sites to work.'
+
+    def __init__(self, *args, **kwargs):
         if not apps.is_installed('django.contrib.sites'):
-            raise ImproperlyConfigured(
-                'You cannot use RedirectFallbackMiddleware when '
-                'django.contrib.sites is not installed.'
-            )
+            raise ImproperlyConfigured(self.no_site_message)
+        super(RedirectMiddleware, self).__init__(*args, **kwargs)
 
-    def do_redirect(self, request):
+    def do_redirect(self, request, response=None):
+        if (
+            getattr(settings, 'DJANGOCMS_REDIRECT_404_ONLY', True) and
+            response and response.status_code != 404
+        ):
+            return response
 
-        full_path = request.get_full_path()
+        full_path_quoted, part, querystring = request.get_full_path().partition('?')
+        possible_paths = [full_path_quoted]
+        full_path_unquoted = urlunquote_plus(full_path_quoted)
+        if full_path_unquoted != full_path_quoted:
+            possible_paths.append(urlunquote_plus(full_path_unquoted))
+        if not settings.APPEND_SLASH and not request.path.endswith('/'):
+            full_path_slash, __, __ = request.get_full_path(
+                force_append_slash=True
+            ).partition('?')
+            possible_paths.append(full_path_slash)
+            full_path_slash_unquoted = urlunquote_plus(full_path_slash)
+            if full_path_slash_unquoted != full_path_slash:
+                possible_paths.append(full_path_slash_unquoted)
+        querystring = '%s%s' % (part, querystring)
         current_site = get_current_site(request)
         r = None
-        key = '{0}_{1}'.format(full_path, settings.SITE_ID)
+        key = get_key_from_path_and_site(full_path_quoted, settings.SITE_ID)
         cached_redirect = cache.get(key)
         if not cached_redirect:
-            try:
-                r = Redirect.objects.get(site=current_site, old_path=full_path)
-            except Redirect.DoesNotExist:
-                pass
-            if r is None and settings.APPEND_SLASH and not request.path.endswith('/'):
+            for path in possible_paths:
+                filters = dict(site=current_site, old_path=path)
                 try:
-                    try:
-                        r = Redirect.objects.get(
-                            site=current_site,
-                            old_path=request.get_full_path(force_append_slash=True),
-                        )
-                    except TypeError:
-                        r = Redirect.objects.get(
-                            site=current_site,
-                            old_path=request.get_full_path(),
-                        )
+                    r = Redirect.objects.get(**filters)
+                    break
                 except Redirect.DoesNotExist:
-                    pass
+                    r = self._match_substring(path)
+                    if r:
+                        break
             cached_redirect = {
                 'site': settings.SITE_ID,
                 'redirect': r.new_path if r else None,
                 'status_code': r.response_code if r else None,
             }
-            cache.set(key, cached_redirect)
+            cache.set(
+                key, cached_redirect,
+                timeout=getattr(settings, 'DJANGOCMS_REDIRECT_CACHE_TIMEOUT', 3600)
+            )
         if cached_redirect['redirect'] == '':
             return self.response_gone_class()
         if cached_redirect['status_code'] == '302':
-            return self.response_redirect_class(cached_redirect['redirect'])
+            return self.response_redirect_class(
+                '%s%s' % (cached_redirect['redirect'], querystring)
+            )
         elif cached_redirect['status_code'] == '301':
-            return self.response_permanent_redirect_class(cached_redirect['redirect'])
+            return self.response_permanent_redirect_class(
+                '%s%s' % (cached_redirect['redirect'], querystring)
+            )
         elif cached_redirect['status_code'] == '410':
             return self.response_gone_class()
 
@@ -73,14 +95,14 @@ class RedirectMiddleware(object):
     def process_response(self, request, response):
         redirect = None
         if not getattr(settings, 'DJANGOCMS_REDIRECT_USE_REQUEST', True):
-            redirect = self.do_redirect(request)
+            redirect = self.do_redirect(request, response)
         if redirect:
             return redirect
         return response
 
 
 class NoCacheRedirectMiddleware(RedirectMiddleware):
-    def do_redirect(self, request):
+    def do_redirect(self, request, response=None):
 
         full_path = request.get_full_path()
         current_site = get_current_site(request)
@@ -117,3 +139,19 @@ class NoCacheRedirectMiddleware(RedirectMiddleware):
             return self.response_permanent_redirect_class(redirect['redirect'])
         elif redirect['status_code'] == '410':
             return self.response_gone_class()
+
+    def _match_substring(self, original_path):
+        redirects = [
+            (r.old_path, r) for r in Redirect.objects.filter(
+                Q(subpath_match=True) | Q(catchall_redirect=True)
+            )
+        ]
+        redirects = sorted(redirects, key=itemgetter(0), reverse=True)
+        for url in redirects:
+            if original_path.startswith(url[0]):
+                redirect = url[1]
+                if redirect.subpath_match:
+                    # we change this in memory only to return the proper redirect object
+                    # without persisting the change
+                    redirect.new_path = original_path.replace(redirect.old_path, redirect.new_path)
+                return redirect

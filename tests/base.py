@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
 
-from djangocms_helper.base_test import BaseTestCase
+from app_helper.base_test import BaseTestCase
+from django.core.cache import cache
 
 
 class BaseRedirectTest(BaseTestCase):
-    pass
+
+    def setUp(self):
+        super(BaseRedirectTest, self).setUp()
+        cache.clear()

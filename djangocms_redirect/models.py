@@ -18,7 +18,7 @@ RESPONSE_CODES = (
 
 @python_2_unicode_compatible
 class Redirect(models.Model):
-    site = models.ForeignKey(Site, verbose_name=_('site'))
+    site = models.ForeignKey(Site, verbose_name=_('site'), on_delete=models.CASCADE)
     old_path = models.CharField(
         _('redirect from'),
         max_length=200,
@@ -38,6 +38,22 @@ class Redirect(models.Model):
         default=RESPONSE_CODES[0][0],
         help_text=_('This is the http response code returned if a destination '
                     'is specified. If no destination is specified the response code will be 410.'))
+    subpath_match = models.BooleanField(
+        _('Subpath match'),
+        default=False,
+        help_text=_(
+            'If selected all the pages starting with the given string will be redirected by '
+            'replacing the matching subpath with the provided redirect path.'
+        )
+    )
+    catchall_redirect = models.BooleanField(
+        _('Catchall redirect'),
+        default=False,
+        help_text=_(
+            'If selected all the pages starting with the given string will be redirected to the '
+            'given redirect path'
+        )
+    )
 
     class Meta:
         verbose_name = _('redirect')
@@ -53,5 +69,6 @@ class Redirect(models.Model):
 @receiver(post_save, sender=Redirect)
 @receiver(post_delete, sender=Redirect)
 def clear_redirect_cache(**kwargs):
-    key = '{0}_{1}'.format(kwargs['instance'].old_path, kwargs['instance'].site_id)
+    from .utils import get_key_from_path_and_site
+    key = get_key_from_path_and_site(kwargs['instance'].old_path, kwargs['instance'].site_id)
     cache.delete(key)

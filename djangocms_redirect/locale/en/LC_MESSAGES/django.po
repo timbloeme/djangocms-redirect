@@ -1,0 +1,91 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# 
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-08-11 22:12+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: \n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: models.py:13
+msgid "301 - Permanent redirection"
+msgstr "301 - Permanent redirection"
+
+#: models.py:14
+msgid "302- Temporary redirection"
+msgstr "302- Temporary redirection"
+
+#: models.py:15
+msgid "410 - Permanently unavailable"
+msgstr "410 - Permanently unavailable"
+
+#: models.py:21
+msgid "site"
+msgstr "site"
+
+#: models.py:23
+msgid "redirect from"
+msgstr "redirect from"
+
+#: models.py:26 models.py:32
+msgid "Select a Page or write an url"
+msgstr "Select a Page or write an url"
+
+#: models.py:29
+msgid "redirect to"
+msgstr "redirect to"
+
+#: models.py:35
+msgid "response code"
+msgstr "response code"
+
+#: models.py:39
+msgid ""
+"This is the http response code returned if a destination is specified. If no"
+" destination is specified the response code will be 410."
+msgstr ""
+"This is the http response code returned if a destination is specified. If no"
+" destination is specified the response code will be 410."
+
+#: models.py:42
+msgid "Subpath match"
+msgstr "Subpath match"
+
+#: models.py:45
+msgid ""
+"If selected all the pages starting with the given string will be redirected "
+"by replacing the matching subpath with the provided redirect path."
+msgstr ""
+"If selected all the pages starting with the given string will be redirected "
+"by replacing the matching subpath with the provided redirect path."
+
+#: models.py:50
+msgid "Catchall redirect"
+msgstr "Catchall redirect"
+
+#: models.py:53
+msgid ""
+"If selected all the pages starting with the given string will be redirected "
+"to the given redirect path"
+msgstr ""
+"If selected all the pages starting with the given string will be redirected "
+"to the given redirect path"
+
+#: models.py:59
+msgid "redirect"
+msgstr "redirect"
+
+#: models.py:60
+msgid "redirects"
+msgstr "redirects"

@@ -11,7 +11,14 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import os
+import sys
+
+import cms_helper
+import sphinx.environment
+from docutils.utils import get_source_line
+
+import djangocms_redirect
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -22,8 +29,6 @@ cwd = os.getcwd()
 parent = os.path.dirname(cwd)
 sys.path.append(parent)
 
-import cms_helper
-import djangocms_redirect
 cms_helper.setup()
 
 # -- General configuration -----------------------------------------------------
@@ -256,8 +261,6 @@ texinfo_documents = [
 #texinfo_no_detailmenu = False
 
 
-import sphinx.environment
-from docutils.utils import get_source_line
 
 
 def _warn_node(self, msg, node, *args, **kwargs):
